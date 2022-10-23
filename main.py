@@ -253,7 +253,7 @@ def start_game(green_team):
             Player2 = "Red"
         print("Game is starting")
         os.system("cls")
-        while Turns < 10:
+        while Turns < 5:
             print("Turn: ", Turns)
             r_f = red_followers
             b_e = blue_energy
@@ -306,6 +306,7 @@ def start_game(green_team):
             print("Press Enter to Continue")
             input()
             os.system("cls")
+        end_game(status)
 
 
 def green_interaction(green_graph):
