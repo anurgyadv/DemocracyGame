@@ -2,7 +2,9 @@ import csv
 import math
 import os
 import random
+import sys
 
+print(sys.setrecursionlimit(2000))
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
@@ -407,13 +409,11 @@ def start_game(green_team):
     while turns > 0:
         if not check_game_status():
             temp_red = red_followers
-            red_potency = minimax(
-                green_team, 0, True, -math.inf, math.inf, 0, agent="red"
-            )
+            red_potency = minimax(green_team, 0, True, -math.inf, math.inf, agent="red")
             blue_potency, grey = minimax(
-                green_team, 0, False, -math.inf, math.inf, 0, agent="blue"
+                green_team, 0, False, -math.inf, math.inf, agent="blue"
             )
-
+            print("Red potency is: ", red_potency, "Blue potency is: ", blue_potency)
             red_turn(green_team, red_potency)
             blue_turn(green_team, blue_potency, grey)
             green_interaction(green_team)
@@ -424,7 +424,7 @@ def start_game(green_team):
                 "Blue Energy: ",
                 blue_energy,
                 "Red Followers: ",
-                temp_red - red_followers,
+                red_followers,
                 "People Voting/ Not Voting ",
                 blue,
                 "/",
@@ -435,122 +435,63 @@ def start_game(green_team):
             end_game(green_team)
 
 
-def minimax(green_team, depth, isMaximizing, alpha, beta, turn, agent):
-    """_summary_
+def minimax(G, depth, isMax, alpha, beta, agent):
 
-    Args:
-        green_team (_type_): _description_
-        depth (_type_): _description_
-        isMaximizing (_type_): _description_
-        alpha (_type_): _description_
-        beta (_type_): _description_
-        turn (_type_): _description_
-        agent (_type_): _description_
-
-    Returns:
-        _type_: _description_
-
-    Work:
-        If red, finds the best potency with maximum increased people with opinion 0 with minimum followers lost. Returns Potency.
-        If blue, finds the best potency with least energy lost and maximum increased people with opinion 1, also determines if using grey_agent is required based on energy. Returns potency and grey = False or True
-
-    """
-    if agent == "red":
-        if depth == 3:
-            return evaluate(green_team, agent)
-        if isMaximizing:
-            best_potency = -math.inf
-            for potency in range(1, 5):
-                new_green_team = green_team.copy()
-                red_turn(new_green_team, potency)
-                value = minimax(
-                    new_green_team, depth + 1, False, alpha, beta, turn + 1, agent
+    if agent == "blue":
+        if isMax:
+            best = -math.inf
+            grey_ay = False
+            for potency in range(1, 6):
+                blue_turn(G, potency)
+                if depth >= 3:
+                    break
+                (value, grey_ay) = minimax(
+                    G, depth + 1, False, alpha, beta, agent="blue"
                 )
-                print(best_potency, value)
-
-                best_potency = max(best_potency, value)
-                alpha = max(alpha, best_potency)
+                best = max(best, value)
+                alpha = max(alpha, best)
                 if beta <= alpha:
                     break
-            return best_potency
+            return best, True
         else:
-            best_potency = math.inf
-            for potency in range(1, 5):
-                new_green_team = green_team.copy()
-                blue_turn(new_green_team, potency, False)
-                value = minimax(
-                    new_green_team, depth + 1, True, alpha, beta, turn + 1, agent
-                )
-                print(best_potency, value)
-                best_potency = min(best_potency, value)
-                beta = min(beta, best_potency)
+            best = math.inf
+            grey_ay = True
+            for potency in range(1, 6):
+                if depth >= 3:
+                    break
+                blue_turn(G, potency)
+                value, grey_ay = minimax(G, depth + 1, True, alpha, beta, agent="blue")
+                print(best, value)
+                best = min(best, value)
+                beta = min(beta, best)
                 if beta <= alpha:
                     break
-            return best_potency
-    elif agent == "blue":
-        if depth == 3:
-            return evaluate(green_team, agent)
-        if isMaximizing:
-            best_potency = -math.inf
-            for potency in range(1, 5):
-                new_green_team = green_team.copy()
-                grey_ag = False
-                blue_turn(new_green_team, potency, grey_ag)
-                value, grey_ag = minimax(
-                    new_green_team, depth + 1, False, alpha, beta, turn + 1, agent
-                )
-                print(best_potency, value)
-
-                best_potency = max(best_potency, value)
-                alpha = max(alpha, best_potency)
+            return best, grey_ay
+    elif agent == "red":
+        if isMax:
+            best = -math.inf
+            for potency in range(1, 6):
+                red_turn(G, potency)
+                if depth >= 3:
+                    break
+                value = minimax(G, depth + 1, False, alpha, beta, agent="red")
+                best = max(best, value)
+                alpha = max(alpha, best)
                 if beta <= alpha:
                     break
-            return best_potency, False
+            return best
         else:
-            best_potency = math.inf
-            for potency in range(1, 5):
-                grey_ag = True
-                new_green_team = green_team.copy()
-                blue_turn(new_green_team, potency, grey_ag)
-                value, grey_ag = minimax(
-                    new_green_team, depth + 1, True, alpha, beta, turn + 1, agent
-                )
-                print(best_potency, value)
-
-                best_potency = min(best_potency, value)
-                beta = min(beta, best_potency)
+            best = math.inf
+            for potency in range(1, 6):
+                if depth >= 3:
+                    break
+                red_turn(G, potency)
+                value = minimax(G, depth + 1, True, alpha, beta, agent="red")
+                best = min(best, value)
+                beta = min(beta, best)
                 if beta <= alpha:
                     break
-            return best_potency, True
-
-
-def evaluate(green_team, agent):
-    """_summary_
-
-    Args:
-        green_team (_type_): _description_
-        agent (_type_): _description_
-
-    Returns:
-        _type_: _description_
-
-    Work:
-        If red, returns the number of followers lost.
-        If blue, returns the number of people with opinion 1.
-
-    """
-    if agent == "red":
-        followers_lost = 0
-        for node in green_team.nodes(data=True):
-            if green_team.nodes[node[0]]["F"] == 0:
-                followers_lost += 1
-        return followers_lost
-    elif agent == "blue":
-        people_with_opinion_1 = 0
-        for node in green_team.nodes(data=True):
-            if green_team.nodes[node[0]]["X"] == 1:
-                people_with_opinion_1 += 1
-        return people_with_opinion_1
+            return best
 
 
 def main():
